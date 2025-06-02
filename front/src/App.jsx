@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import './App.css';
+import { ThemeContext } from './contexts/ThemeContext';
+
 
 const TIME_OPTIONS = [10, 20, 30];
 const MOTIVATIONAL_PHRASES = [
@@ -10,8 +12,10 @@ const MOTIVATIONAL_PHRASES = [
   "Невероятно!",
   "Горжусь тобой!"
 ];
+const CELEBRATION_EMOJIS = ["🎉", "🥳", "🎊", "✨", "🌟", "🏆", "🚀", "👍", "💯", "🤩", "🕺", "💃"];
 
 function App() {
+  const { theme, toggleTheme } = useContext(ThemeContext);
   const [name, setName] = useState(() => {
     const savedName = localStorage.getItem('timerMotivatorName');
     return savedName || '';
@@ -21,6 +25,7 @@ function App() {
   const [timerActive, setTimerActive] = useState(false);
   const [timerFinished, setTimerFinished] = useState(false);
   const [currentMotivation, setCurrentMotivation] = useState('');
+  const [currentEmoji, setCurrentEmoji] = useState('');
   const [completionCount, setCompletionCount] = useState(() => {
     const savedCount = localStorage.getItem('timerMotivatorCompletions');
     return savedCount ? parseInt(savedCount, 10) : 0;
@@ -29,8 +34,9 @@ function App() {
   const audioRef = useRef(null);
 
   useEffect(() => {
-    audioRef.current = new Audio('.assets/notification.mp3'); 
+    audioRef.current = new Audio('/notification.mp3');
   }, []);
+
   useEffect(() => {
     localStorage.setItem('timerMotivatorName', name);
   }, [name]);
@@ -47,9 +53,15 @@ function App() {
     if (timeLeft === 0) {
       setTimerActive(false);
       setTimerFinished(true);
-      const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length);
-      setCurrentMotivation(MOTIVATIONAL_PHRASES[randomIndex]);
+
+      const motivationalIndex = Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length);
+      setCurrentMotivation(MOTIVATIONAL_PHRASES[motivationalIndex]);
+
+      const emojiIndex = Math.floor(Math.random() * CELEBRATION_EMOJIS.length);
+      setCurrentEmoji(CELEBRATION_EMOJIS[emojiIndex]);
+
       setCompletionCount(prevCount => prevCount + 1);
+
       if (audioRef.current) {
         audioRef.current.play().catch(error => {
           console.warn("Audio play failed:", error);
@@ -63,28 +75,28 @@ function App() {
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [timerActive, timeLeft]); 
+  }, [timerActive, timeLeft, setCompletionCount]);
 
   const handleStartTimer = () => {
     if (name.trim() === '') {
       alert('Пожалуйста, введите имя!');
       return;
     }
-    setTimeLeft(selectedTime); 
+    setTimeLeft(selectedTime);
     setTimerFinished(false);
     setCurrentMotivation('');
+    setCurrentEmoji('');
     setTimerActive(true);
   };
 
   const handleResetOrTryAgain = () => {
-    //setName('');
+    setName('');
     setSelectedTime(TIME_OPTIONS[0]);
     setTimeLeft(TIME_OPTIONS[0]);
     setTimerActive(false);
     setTimerFinished(false);
     setCurrentMotivation('');
-   
-    
+    setCurrentEmoji('');
   };
 
   const handleTimeChange = (event) => {
@@ -99,9 +111,16 @@ function App() {
   const displayProgress = timerFinished ? 100 : progressPercentage;
 
   return (
-    <div className="App">
+    <div className={`App ${theme}`}> 
+      <div className="theme-toggler">
+        <button onClick={toggleTheme}>
+          Переключить на {theme === 'light' ? 'тёмную' : 'светлую'} тему
+        </button>
+      </div>
+
       <h1>Таймер-Мотиватор</h1>
       <p className="completions">Завершено раз: {completionCount}</p>
+
       {!timerActive && !timerFinished && (
         <div className="input-group">
           <input
@@ -137,13 +156,16 @@ function App() {
 
       {timerFinished && (
         <div className="results">
-          <p>{currentMotivation} Ты справился, {name} 💪</p>
+          <p>
+            <span className="motivation-text">{currentMotivation}</span>
+            <span className="emoji-celebration">{currentEmoji}</span>
+            {name && ` Ты справился, ${name}!`} 💪
+          </p>
           <button onClick={handleResetOrTryAgain}>Попробовать ещё раз</button>
         </div>
       )}
 
-      
-      {!timerActive && !timerFinished && (name || selectedTime !== TIME_OPTIONS[0]) && ( // Показываем если есть что сбрасывать
+      {!timerActive && !timerFinished && (name || selectedTime !== TIME_OPTIONS[0]) && (
          <button onClick={handleResetOrTryAgain} className="reset-button general-reset">
             Сбросить настройки
          </button>
